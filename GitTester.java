@@ -87,11 +87,20 @@ public class GitTester{
 
     public static void deleteIndex () throws IOException {
         File index = new File ("git/objects/index");
-        index.delete();
+        if (index.exists()) {
+            index.delete();
+        }
     }
 
     public static void deleteTestFile () {
         testFile.delete();
+    }
+
+    public static void deleteObjects() {
+        File objects = new File ("git/objects/index");
+        if (objects.exists()) {
+            objects.delete();
+        }
     }
 
 }
