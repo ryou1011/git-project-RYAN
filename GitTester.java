@@ -18,12 +18,12 @@ public class GitTester{
         deleteTestFile();
     }
     public static String ifInitRepoWorks() throws IOException {
-        if (new File ("git/objects/index").exists()) {
+        if (new File ("git/index").exists()) {
             return "it alr exists bud";
         }
         else {
             Git.initRepo();
-            File temp = new File ("git/objects/index");
+            File temp = new File ("git/index");
             if (temp.exists()) {
                 temp.delete();
                 return "yuh, w code";
@@ -47,7 +47,7 @@ public class GitTester{
 
     public static void ifMakeFileWorks(File test) throws IOException {
         //reads the contents of the index for later use
-        File index = new File ("git/objects/index");
+        File index = new File ("git/index");
         Scanner sc2 = new Scanner (index);
         while (sc2.hasNextLine()) {
             originalIndex += sc2.nextLine();
@@ -71,7 +71,7 @@ public class GitTester{
             System.out.println ("Oopsie daisy, the file is not in the objects folder");
         }
         //makes sure there is an entry in the index file
-        File index2 = new File ("git/objects/index");
+        File index2 = new File ("git/index");
         Scanner sc3 = new Scanner (index2);
         String newIndex = originalIndex;
         while (sc3.hasNextLine()) {
@@ -87,7 +87,7 @@ public class GitTester{
     }
 
     public static void deleteIndex () throws IOException {
-        File index = new File ("git/objects/index");
+        File index = new File ("git/index");
         if (index.exists()) {
             index.delete();
         }
@@ -98,7 +98,7 @@ public class GitTester{
     }
 
     public static void deleteObjects() {
-        File objects = new File ("git/objects/index");
+        File objects = new File ("git/objects");
         if (objects.exists()) {
             objects.delete();
         }

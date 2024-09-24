@@ -26,13 +26,22 @@ public class Git {
     }
 
     public static void initRepo() throws IOException {
-        if (new File ("git/objects/index").exists()) {
+        if (new File ("git/objects").exists()) {
             System.out.println ("Git Repository already exists”");
         }
         else {
-            File index = new File ("git/objects/index");
-            index.createNewFile();
-            index.mkdirs();
+            File objects = new File ("git/objects");
+            objects.createNewFile();
+            objects.mkdirs();
+        }
+
+        if (new File ("git/index").exists()) {
+            System.out.println ("Git Repository already exists”");
+        }
+        else {
+            File objects = new File ("git/index");
+            objects.createNewFile();
+            objects.mkdirs();
         }
     }
 
@@ -80,7 +89,7 @@ public class Git {
             e.printStackTrace();
         }
         //writes the stuff into index
-        File index = new File ("git/objects/index");
+        File index = new File ("git/index");
         try(BufferedWriter bw2 = new BufferedWriter (new FileWriter(index))) {
             bw2.newLine();
             String name = file.getName();
