@@ -21,7 +21,6 @@ public class Git {
     public static boolean getToggle() {
         return zipToggle;
     }
-
     public static void setToggle(boolean boo) {
         zipToggle = boo;
     }
