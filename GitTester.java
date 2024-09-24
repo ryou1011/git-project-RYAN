@@ -14,6 +14,7 @@ public class GitTester{
         testFile = getMadeFile("Brody is so darn cool!");
         ifMakeFileWorks(testFile);
         deleteIndex();
+        deleteObjects();
         deleteTestFile();
     }
     public static String ifInitRepoWorks() throws IOException {
