@@ -13,7 +13,8 @@ public class GitTester{
         System.out.println(ifInitRepoWorks());
         testFile = getMadeFile("Brody is so darn cool!");
         ifMakeFileWorks(testFile);
-        resetFiles();
+        deleteIndex();
+        deleteTestFile();
     }
     public static String ifInitRepoWorks() throws IOException {
         if (new File ("git/objects/index").exists()) {
@@ -84,14 +85,13 @@ public class GitTester{
         }
     }
 
-    public static void resetFiles () throws IOException {
-        //resets index file
+    public static void deleteIndex () throws IOException {
         File index = new File ("git/objects/index");
-        BufferedWriter bw = new BufferedWriter(new FileWriter (index));
-        bw.write (originalIndex);
-        bw.close();
-        //deletes the file that was created
+        index.delete();
+    }
+
+    public static void deleteTestFile () {
         testFile.delete();
     }
-    
+
 }
