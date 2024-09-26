@@ -31,8 +31,8 @@ public class Git {
         }
         else {
             File objects = new File ("git/objects");
-            objects.createNewFile();
             objects.mkdirs();
+            objects.createNewFile();
         }
 
         if (new File ("git/index").exists()) {
@@ -93,9 +93,9 @@ public class Git {
         try(BufferedWriter bw2 = new BufferedWriter (new FileWriter(index))) {
             bw2.newLine();
             String name = file.getName();
-            bw2.write(name);
-            bw2.write(" ");
             bw2.write(hash);
+            bw2.write(" ");
+            bw2.write(name);
             bw2.close();
         }
         catch (IOException e) {
