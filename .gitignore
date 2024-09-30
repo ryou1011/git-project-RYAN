@@ -1,3 +1,8 @@
 /git
 .DS_Store
 *.jar
+testDir
+testFile.txt
+compressedTestFile.txt
+compressedTestFile.txt.zip
+newTestFile.zip

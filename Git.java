@@ -1,47 +1,45 @@
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.BufferedWriter;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Scanner;
 import java.math.BigInteger;
+import java.nio.file.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.io.FileOutputStream;
+import java.util.Scanner;
 import java.util.zip.*;
-import java.nio.file.*;
 
 public class Git {
 
     public static boolean zipToggle;
-    public static void main (String [] args) {
 
+    public static void main(String[] args) {
+        // Main method for testing
     }
 
     public static boolean getToggle() {
         return zipToggle;
     }
+
     public static void setToggle(boolean boo) {
         zipToggle = boo;
     }
 
     public static void initRepo() throws IOException {
-        if (new File ("git/objects").exists()) {
-            System.out.println ("Git Repository already exists”");
-        }
-        else {
-            File objects = new File ("git/objects");
+        if (new File("git/objects").exists()) {
+            System.out.println("Git Repository already exists");
+        } else {
+            File objects = new File("git/objects");
             objects.mkdirs();
-            objects.createNewFile();
         }
 
-        if (new File ("git/index").exists()) {
-            System.out.println ("Git Repository already exists”");
-        }
-        else {
-            File objects = new File ("git/index");
-            objects.createNewFile();
-            objects.mkdirs();
+        if (new File("git/index").exists()) {
+            System.out.println("Git Repository already exists");
+        } else {
+            File index = new File("git/index");
+            index.createNewFile();
         }
     }
 
@@ -55,58 +53,93 @@ public class Git {
                 hash = "0" + hash;
             }
             return hash;
-        }
-        catch (NoSuchAlgorithmException e) {
+        } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static File makeFile (File file) throws IOException {
-        //gets the file's contents
-        String text = "";
-        Scanner sc = new Scanner (file);
+    public static File makeFile(File file, String relativePath) throws IOException {
+        // Reads the file content
+        StringBuilder text = new StringBuilder();
+        Scanner sc = new Scanner(file);
         while (sc.hasNextLine()) {
-            text += sc.nextLine();
+            text.append(sc.nextLine()).append("\n");
         }
         sc.close();
-        //checks if needs to compress
+
+        // Check if compression is required
         if (zipToggle) {
             String filePath = "git/objects/" + file.getName();
             compressFile(filePath);
         }
-        //generates new file name using the original file's contents
-        String hash = getHash(text);
-        File obj = new File ("git/objects");
-        obj.mkdirs();
-        File newFile = new File (obj, hash);
+
+        // Generate the SHA1 hash of the file contents
+        String hash = getHash(text.toString());
+        File objDir = new File("git/objects");
+        objDir.mkdirs();
+        File newFile = new File(objDir, hash);
         newFile.createNewFile();
-        newFile.mkdirs();
-        //copies original contents into new file
-        try(BufferedWriter bw = new BufferedWriter (new FileWriter(newFile))) {
-            bw.write(text);
+
+        // Write the original content into the new blob file
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(newFile))) {
+            bw.write(text.toString());
         }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-        //writes the stuff into index
-        File index = new File ("git/index");
-        try(BufferedWriter bw2 = new BufferedWriter (new FileWriter(index))) {
+
+        // Write the entry into the index with 'blob' type
+        File index = new File("git/index");
+        try (BufferedWriter bw2 = new BufferedWriter(new FileWriter(index, true))) {
+            bw2.write("blob " + hash + " " + relativePath);
             bw2.newLine();
-            String name = file.getName();
-            bw2.write(hash);
-            bw2.write(" ");
-            bw2.write(name);
-            bw2.close();
         }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
+
         return newFile;
     }
 
-    public static void compressFile (String path) {
+    public static String addDirectory(String dirPath, String relativePath) throws IOException {
+        File directory = new File(dirPath);
+        if (!directory.exists() || !directory.isDirectory()) {
+            throw new IOException("Directory not found or is not accessible: " + dirPath);
+        }
+
+        StringBuilder treeContent = new StringBuilder();
+        File[] files = directory.listFiles();
+        if (files == null) {
+            throw new IOException("Failed to read contents of directory: " + dirPath);
+        }
+
+        for (File file : files) {
+            if (file.isDirectory()) {
+                // Recursively handle subdirectories (trees)
+                String subDirHash = addDirectory(file.getPath(), relativePath + "/" + file.getName());
+                treeContent.append("tree ").append(subDirHash).append(" ").append(relativePath).append("/").append(file.getName()).append("\n");
+            } else {
+                // Handle files (blobs)
+                makeFile(file, relativePath + "/" + file.getName());
+                String fileHash = getHash(new String(Files.readAllBytes(file.toPath())));
+                treeContent.append("blob ").append(fileHash).append(" ").append(relativePath).append("/").append(file.getName()).append("\n");
+            }
+        }
+
+        // Create a tree file in the objects directory
+        String treeHash = getHash(treeContent.toString());
+        File treeFile = new File("git/objects/" + treeHash);
+        try (BufferedWriter treeWriter = new BufferedWriter(new FileWriter(treeFile))) {
+            treeWriter.write(treeContent.toString());
+        }
+
+        // Add the tree to the index
+        File index = new File("git/index");
+        try (BufferedWriter indexWriter = new BufferedWriter(new FileWriter(index, true))) {
+            indexWriter.write("tree " + treeHash + " " + relativePath);
+            indexWriter.newLine();
+        }
+
+        return treeHash;
+    }
+
+    public static void compressFile(String path) {
         try {
-            File file = new File (path);
+            File file = new File(path);
             String zipFileName = file.getName().concat(".zip");
             FileOutputStream out = new FileOutputStream(zipFileName);
             ZipOutputStream zip = new ZipOutputStream(out);
@@ -115,8 +148,7 @@ public class Git {
             zip.write(bytes, 0, bytes.length);
             zip.closeEntry();
             zip.close();
-        }
-        catch (FileNotFoundException e) {
+        } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();

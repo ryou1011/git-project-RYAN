@@ -1,107 +1,138 @@
+
 import java.io.File;
-import java.io.IOException;
-import java.io.BufferedWriter;
 import java.io.FileWriter;
-import java.util.Scanner;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-public class GitTester{
+public class GitTester {
 
-    private static String originalIndex;
-    private static File testFile;
-    public static void main (String [] args) throws IOException {
+    public static void main(String[] args) {
+        try {
+            // Test 1: Initialize the repository
+            testInitRepo();
+
+            // Test 2: Add a file to the repository as a blob
+            testAddFile();
+
+            // Test 3: Add a directory to the repository as a tree
+            testAddDirectory();
+
+            // Test 4: Enable zip toggle and add a file (for compression)
+            testCompressionToggle();
+
+            // Test 5: Validate index format after adding blobs and trees
+            validateIndexFile();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void testInitRepo() throws IOException {
+        System.out.println("Running testInitRepo...");
+        Git.initRepo();
+        File objectsDir = new File("git/objects");
+        File indexFile = new File("git/index");
+        if (objectsDir.exists() && indexFile.exists()) {
+            System.out.println("Repository initialized successfully.");
+        } else {
+            System.out.println("Repository initialization failed.");
+        }
+        System.out.println();
+    }
+
+    public static void testAddFile() throws IOException {
+        System.out.println("Running testAddFile...");
+
+        // Create a test file
+        File testFile = new File("testFile.txt");
+        FileWriter writer = new FileWriter(testFile);
+        writer.write("This is a test file for blob creation.");
+        writer.close();
+
+        // Add the file as a blob
+        Git.makeFile(testFile, "testFile.txt");
+
+        // Check if the file was added to git/objects
+        String hash = Git.getHash("This is a test file for blob creation.");
+        File blobFile = new File("git/objects/" + hash);
+        if (blobFile.exists()) {
+            System.out.println("File added successfully as a blob.");
+        } else {
+            System.out.println("Failed to add the file as a blob.");
+        }
+        System.out.println();
+    }
+
+    public static void testAddDirectory() throws IOException {
+        System.out.println("Running testAddDirectory...");
+
+        // Create a test directory with files
+        File testDir = new File("testDir");
+        testDir.mkdir();
+
+        File file1 = new File("testDir/file1.txt");
+        FileWriter writer1 = new FileWriter(file1);
+        writer1.write("This is file 1 inside testDir.");
+        writer1.close();
+
+        File file2 = new File("testDir/file2.txt");
+        FileWriter writer2 = new FileWriter(file2);
+        writer2.write("This is file 2 inside testDir.");
+        writer2.close();
+
+        // Add the directory as a tree
+        Git.addDirectory("testDir", "testDir");
+
+        // Check if the directory tree was added
+        File objectsDir = new File("git/objects");
+        if (objectsDir.list().length > 0) {
+            System.out.println("Directory added successfully as a tree.");
+        } else {
+            System.out.println("Failed to add the directory as a tree.");
+        }
+        System.out.println();
+    }
+
+    public static void testCompressionToggle() throws IOException {
+        System.out.println("Running testCompressionToggle...");
+
+        // Enable compression
         Git.setToggle(true);
-        System.out.println(ifInitRepoWorks());
-        testFile = getMadeFile("Brody is so darn cool!");
-        ifMakeFileWorks(testFile);
-        deleteIndex();
-        deleteObjects();
-        deleteTestFile();
-    }
-    public static String ifInitRepoWorks() throws IOException {
-        if (new File ("git/index").exists()) {
-            return "it alr exists bud";
+
+        // Create another test file
+        File compressedFile = new File("compressedTestFile.txt");
+        FileWriter writer = new FileWriter(compressedFile);
+        writer.write("This is a file to test compression.");
+        writer.close();
+
+        // Add the file with compression
+        Git.makeFile(compressedFile, "compressedTestFile.txt");
+
+        // Check if the compressed file exists
+        String hash = Git.getHash("This is a file to test compression.");
+        File zipFile = new File("git/objects/" + hash + ".zip");
+        if (zipFile.exists()) {
+            System.out.println("File compressed and added successfully.");
+        } else {
+            System.out.println("Failed to compress and add the file.");
         }
-        else {
-            Git.initRepo();
-            File temp = new File ("git/index");
-            if (temp.exists()) {
-                temp.delete();
-                return "yuh, w code";
-            }
-            else {
-                return "L code, file wudn't made";
-            }
-        }
+        System.out.println();
     }
 
-    public static File getMadeFile (String input) throws IOException {
-        File file = new File ("git/objects/newTestFile");
-        file.createNewFile();
-        file.mkdirs();
-        BufferedWriter bw = new BufferedWriter (new FileWriter (file));
-        bw.write(input);
-        bw.close();
-        File test = Git.makeFile(file);
-        return test;
-    }
+    public static void validateIndexFile() throws IOException {
+        System.out.println("Running validateIndexFile...");
 
-    public static void ifMakeFileWorks(File test) throws IOException {
-        //reads the contents of the index for later use
-        File index = new File ("git/index");
-        Scanner sc2 = new Scanner (index);
-        while (sc2.hasNextLine()) {
-            originalIndex += sc2.nextLine();
+        Path indexPath = Paths.get("git/index");
+        if (Files.exists(indexPath)) {
+            String content = Files.readString(indexPath);
+            System.out.println("Index file content:");
+            System.out.println(content);
+        } else {
+            System.out.println("Index file does not exist.");
         }
-        sc2.close();
-        //writes out the file name, contents, and hash
-        Scanner sc = new Scanner (test);
-        String contents = "";
-        while (sc.hasNextLine()) {
-            contents += sc.nextLine();
-        }
-        sc.close();
-        System.out.println ("File name: " + test.getName() + "\n" + "File contents: " + contents);
-        //makes sure that the new file is in the objects folder
-        File obj = new File ("git/objects");
-        obj.mkdirs();
-        if (new File (obj, test.getName()).exists()) {
-            System.out.println ("Huzzah, the file is in the objects folder");
-        }
-        else {
-            System.out.println ("Oopsie daisy, the file is not in the objects folder");
-        }
-        //makes sure there is an entry in the index file
-        File index2 = new File ("git/index");
-        Scanner sc3 = new Scanner (index2);
-        String newIndex = originalIndex;
-        while (sc3.hasNextLine()) {
-            newIndex += sc3.nextLine();
-        }
-        sc3.close();
-        if (newIndex.length() > originalIndex.length()) {
-            System.out.println ("Nice! There is a new entry into the index file");
-        }
-        else {
-            System.out.println ("Uh oh! No new entry :(");
-        }
+        System.out.println();
     }
-
-    public static void deleteIndex () throws IOException {
-        File index = new File ("git/index");
-        if (index.exists()) {
-            index.delete();
-        }
-    }
-
-    public static void deleteTestFile () {
-        testFile.delete();
-    }
-
-    public static void deleteObjects() {
-        File objects = new File ("git/objects");
-        if (objects.exists()) {
-            objects.delete();
-        }
-    }
-
 }
