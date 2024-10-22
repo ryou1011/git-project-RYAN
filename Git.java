@@ -10,8 +10,10 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Scanner;
 import java.util.zip.*;
+import java.time.*;
+import java.time.format.*;
 
-public class Git {
+public class Git implements GitInterface{
 
     public static boolean zipToggle;
 
@@ -28,6 +30,12 @@ public class Git {
     }
 
     public static void initRepo() throws IOException {
+        if (new File ("git").exists()) {
+            File head = new File ("git/HEAD");
+            head.createNewFile();
+        } else {
+            System.out.println("yo git don't exist for sum reason bro");
+        }
         if (new File("git/objects").exists()) {
             System.out.println("Git Repository already exists");
         } else {
@@ -100,7 +108,7 @@ public class Git {
         if (!directory.exists() || !directory.isDirectory()) {
             throw new IOException("Directory not found or is not accessible: " + dirPath);
         }
-
+        
         StringBuilder treeContent = new StringBuilder();
         File[] files = directory.listFiles();
         if (files == null) {
@@ -154,4 +162,144 @@ public class Git {
             e.printStackTrace();
         }
     }
+
+    public String commit (String author, String message) throws IOException {
+        File HEAD = new File ("git/HEAD");
+
+        //gets parent line
+        String parentLine = "";
+        try {
+            Scanner sc = new Scanner (HEAD);
+            String parent = "";
+            if (sc.hasNextLine()) {
+                parent += sc.nextLine();
+            }
+            parentLine = "parent: " + parent + "\n";
+            sc.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("issue with HEAD file");
+            return null;
+        }
+        
+        //gets tree line
+        String treeLine = "";
+        try {
+            File index = new File ("git/index");
+            Scanner sc2 = new Scanner (index);
+            String rooty = "";
+            while (sc2.hasNextLine()) {
+                rooty = sc2.nextLine();
+            }
+            sc2.close();
+            treeLine = "tree: " + rooty.substring(5, 45) + "\n";
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("issue with index file");
+            return null;
+        }
+
+
+        //gets date line
+        DateTimeFormatter format = DateTimeFormatter.ofPattern("MM/dd/yyyy");
+        LocalDate date = LocalDate.now();
+        String dateLine = format.format(date);
+
+        //writes to commit file
+        
+        String temp = treeLine + parentLine + "author: " + author + "\n" + 
+        "date: " + dateLine + "\n" + "message: " + message + "\n";
+        String hash = getHash(temp);
+        File commit = new File ("git/objects/" + hash);
+        commit.createNewFile();
+
+        BufferedWriter bw = new BufferedWriter (new FileWriter (commit));
+        bw.write(temp);
+        bw.close();
+
+        //updates HEAD
+        BufferedWriter bw2 = new BufferedWriter (new FileWriter(HEAD));
+        bw2.write(hash);
+        bw2.close();
+
+        return hash; 
+    }
+
+    public void stage (String path) throws IOException {
+       addDirectory(path, path);
+    }
+
+    public void checkout(String hash) throws IOException {
+        //checks if file exists
+        File file = new File ("git/objects/" + hash);
+        if (!file.exists()) {
+            throw new FileNotFoundException("File doesn't exist bro");
+        }
+
+        //gets the name of the root file
+        File index = new File ("git/index");
+        String temp = "";
+        try {
+            Scanner sc = new Scanner (index);
+            while (sc.hasNextLine()) {
+                temp = sc.nextLine();
+            }
+            sc.close();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+        String rootName = temp.substring(46);
+
+        //deletes the directory
+        File toReset = new File (rootName);
+        resetFile(toReset);
+
+        //recreate directory
+        File root = new File (rootName);
+        root.createNewFile();
+        recreateDirectory(hash, root);
+
+    }
+
+    private void resetFile (File file) {
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            for (int i = 0; i < files.length; i++) {
+                File temp = files[i];
+                resetFile (temp);
+            }
+            file.delete();
+        }
+    }
+
+    private void recreateDirectory (String hash, File root) throws IOException {
+        //recreate root file using commit
+        File file = new File ("git/objects/" + hash);
+        if (!file.exists()) {
+            throw new FileNotFoundException("uh oh");
+        }
+        
+        Scanner sc = new Scanner (root);
+        while (sc.hasNextLine()) {
+            String nextLine = sc.nextLine();
+            String type = nextLine.substring(0, 4);
+            String fileHash = nextLine.substring(5, 45);
+            String path = nextLine.substring(46);
+            File blob = new File (path);
+            if (type.equals("blob")) {
+                blob.createNewFile();
+            }
+            else {
+                blob.mkdir();
+                File subDirectory = new File ("git/objects/" + fileHash);
+                recreateDirectory (fileHash, subDirectory);
+            }
+        }
+        sc.close();
+    }
+
 }
